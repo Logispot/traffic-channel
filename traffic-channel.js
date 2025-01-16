@@ -18,7 +18,7 @@ function categorizeTrafficChannel() {
                 campaign: utmCampaign,
             };
         }
-        if (medium === 'email') {
+        if (['email', 'newsletter'].includes(medium)) {
             return {
                 channel: 'Email',
                 source: utmSource,
@@ -78,20 +78,26 @@ function categorizeTrafficChannel() {
 
         // Organic Search (known search engines)
         const searchEngines = [
+            'lens.google.com',
             'google.com',
             'google',
-            'kakao',
             'bing.com',
             'bing',
+            'edgeservices.bing.com',
+            'ecosia.org',
             'yahoo.com',
             'duckduckgo.com',
             'baidu.com',
+            'baidu',
             'naver.com',
             'naver',
+            'm.naver.com',
             'm.search.naver.com',
+            'ad.search.naver.com',
             'daum.net',
             'daum',
-            'm.search.daum.net'
+            'm.search.daum.net',
+            'nate'
         ];
 
         if (searchEngines.some(engine => referrerHost.toLowerCase().includes(engine))) {
@@ -106,12 +112,23 @@ function categorizeTrafficChannel() {
         // Organic Social (known social media platforms)
         const socialPlatforms = [
             'facebook.com',
+            'l.facebook.com',
             'twitter.com',
+            'linkedin',
             'linkedin.com',
+            'kr.linkedin.com',
             'instagram.com',
+            'l.instagram.com',
             'pinterest.com',
             'reddit.com',
             'tiktok.com',
+            'kakao',
+            'kakao.vc',
+            'map.kakao.com',
+            'place.map.kakao.com',
+            'blog.naver.com',
+            'm.blog.naver.com',
+            'naverblog'
         ];
 
         if (socialPlatforms.some(platform => referrerHost.includes(platform))) {
@@ -119,6 +136,20 @@ function categorizeTrafficChannel() {
                 channel: 'Organic Social',
                 source: referrerHost,
                 medium: 'social',
+                campaign: '(not set)',
+            };
+        }
+
+        // Organic Video
+        const socialVideos = [
+            'youtube.com'
+        ];
+
+        if (socialVideos.some(platform => referrerHost.includes(platform))) {
+            return {
+                channel: 'Organic Video',
+                source: referrerHost,
+                medium: 'video',
                 campaign: '(not set)',
             };
         }
