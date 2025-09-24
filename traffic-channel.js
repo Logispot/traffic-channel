@@ -1,6 +1,16 @@
 function categorizeTrafficChannel() {
     const urlParams = new URLSearchParams(getAllQueryParams());
     const referrer = document.referrer || '(direct)';
+    
+    // referrerHost를 한 번만 처리
+    let referrerHost = '(direct)';
+    if (referrer !== '(direct)') {
+        try {
+            referrerHost = new URL(referrer).hostname;
+        } catch {
+            referrerHost = '(invalid-referrer)';
+        }
+    }
 
     // Check for UTM parameters
     const utmSource = urlParams.get('utm_source') || '(direct)';
@@ -10,7 +20,52 @@ function categorizeTrafficChannel() {
     // Priority: UTM parameters
     if (utmMedium) {
         const medium = utmMedium.toLowerCase();
-        if (['cpc', 'ppc', 'display', 'brand_search'].includes(medium)) {
+        const paidSocial = [
+            'fb',
+            'facebook',
+            'remember',
+            'blind',
+            'instagram',
+            'an',
+            'ig',
+        ];
+
+
+        // Display + Social 플랫폼 조합
+        if (['display'].includes(medium) && referrer !== '(direct)') {
+            const isSocialReferrer = paidSocial.some(platform => referrerHost.includes(platform));
+            const isSocialUtm = paidSocial.some(platform => utmSource.includes(platform));
+            
+            if (isSocialReferrer || isSocialUtm) {
+                return {
+                    channel: 'Paid Social',
+                    source: isSocialUtm ? utmSource : referrerHost,
+                    medium: medium,
+                    campaign: utmCampaign,
+                };
+            }
+        }
+
+        // Paid Social 처리
+        if (['paid_social'].includes(medium)) {
+            return {
+                channel: 'Paid Social',
+                source: utmSource,
+                medium: medium,
+                campaign: utmCampaign,
+            };
+        }
+
+        if (['display', 'banner'].includes(medium)) {
+            return {
+                channel: 'Display',
+                source: utmSource,
+                medium: medium,
+                campaign: utmCampaign,
+            };
+        }
+
+        if (['cpc', 'ppc', 'brand_search', 'paid_search'].includes(medium)) {
             return {
                 channel: 'Paid Search',
                 source: utmSource,
@@ -18,6 +73,7 @@ function categorizeTrafficChannel() {
                 campaign: utmCampaign,
             };
         }
+
         if (['email', 'newsletter'].includes(medium)) {
             return {
                 channel: 'Email',
@@ -44,20 +100,11 @@ function categorizeTrafficChannel() {
 
     // Secondary: Referrer-based logic
     if (referrer !== '(direct)') {
-        let referrerHost;
-        try {
-            referrerHost = new URL(referrer).hostname;
-        } catch {
-            referrerHost = '(invalid-referrer)';
-        }
-
         // Paid Search (known search engines)
         const paidSearchParams = [
             'gclid', // Google Ads
             'adgroupid', // Google Ads
             'msclkid', // Microsoft Ads
-            'fbclid', // Facebook
-            'ttclid', // Tiktok
             'n_campaign_type', // 네이버
             'n_media', // 네이버
             'n_ad_group', // 네이버
@@ -66,6 +113,7 @@ function categorizeTrafficChannel() {
             'DMC_keyword', // 다음
             'DMC_medium', // 다음
             'DMC_source', // 다음
+            'ad.search.naver.com',
         ];
         if (paidSearchParams.some(param => urlParams.has(param))) {
             return {
@@ -75,57 +123,35 @@ function categorizeTrafficChannel() {
                 campaign: '(not set)',
             };
         }
-
-        // Organic Search (known search engines)
-        const searchEngines = [
-            'lens.google.com',
-            'google.com',
-            'google',
-            'bing.com',
-            'bing',
-            'edgeservices.bing.com',
-            'ecosia.org',
-            'yahoo.com',
-            'duckduckgo.com',
-            'baidu.com',
-            'baidu',
-            'naver.com',
-            'naver',
-            'm.naver.com',
-            'm.search.naver.com',
-            'ad.search.naver.com',
-            'daum.net',
-            'daum',
-            'm.search.daum.net',
-            'nate'
+        const paidSocialParams = [
+            'fbclid',     // Facebook/Instagram
+            'ttclid',     // TikTok
+            'twclid',     // Twitter/X
+            'li_fat_id',  // LinkedIn
+            'sc_click_id', // Snapchat
+            'pin_id',     // Pinterest
         ];
-
-        if (searchEngines.some(engine => referrerHost.toLowerCase().includes(engine))) {
+        if (paidSocialParams.some(param => urlParams.has(param))) {
             return {
-                channel: 'Organic Search',
+                channel: 'Paid Social',
                 source: referrerHost,
-                medium: 'organic',
+                medium: 'social',
                 campaign: '(not set)',
             };
         }
 
         // Organic Social (known social media platforms)
         const socialPlatforms = [
-            'facebook.com',
-            'l.facebook.com',
-            'twitter.com',
+            'facebook',
+            'twitter',
             'linkedin',
-            'linkedin.com',
-            'kr.linkedin.com',
-            'instagram.com',
-            'l.instagram.com',
-            'pinterest.com',
-            'reddit.com',
-            'tiktok.com',
+            'instagram',
+            'instagram',
+            'pinterest',
+            'reddit',
+            'tiktok',
             'kakao',
-            'kakao.vc',
-            'map.kakao.com',
-            'place.map.kakao.com',
+            'kakao',
             'blog.naver.com',
             'm.blog.naver.com',
             'naverblog'
@@ -140,6 +166,28 @@ function categorizeTrafficChannel() {
             };
         }
 
+        // Organic Search (known search engines)
+        const searchEngines = [
+            'google',
+            'bing',
+            'ecosia.org',
+            'yahoo',
+            'duckduckgo',
+            'baidu',
+            'naver',
+            'daum',
+            'nate'
+        ];
+
+        if (searchEngines.some(engine => referrerHost.toLowerCase().includes(engine))) {
+            return {
+                channel: 'Organic Search',
+                source: referrerHost,
+                medium: 'organic',
+                campaign: '(not set)',
+            };
+        }
+
         // Organic Video
         const socialVideos = [
             'youtube.com'
@@ -150,6 +198,28 @@ function categorizeTrafficChannel() {
                 channel: 'Organic Video',
                 source: referrerHost,
                 medium: 'video',
+                campaign: '(not set)',
+            };
+        }
+
+        const referralAi = [
+            'chatgpt',
+            'gemini',
+            'perplexity',
+            'claude',
+            'crosscenter.kr',
+            'felo.ai',
+            'wrtn.ai',
+            'clova',
+            'bard',
+            'copilot',
+        ];
+
+        if(referralAi.some(platform => referrerHost.includes(platform))) {
+            return {
+                channel: 'Referral(AI)',
+                source: referrerHost,
+                medium: 'referral',
                 campaign: '(not set)',
             };
         }
