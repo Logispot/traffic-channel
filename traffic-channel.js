@@ -2,16 +2,6 @@ function categorizeTrafficChannel() {
     const urlParams = new URLSearchParams(getAllQueryParams());
     const referrer = document.referrer || '(direct)';
     
-    // referrerHost를 한 번만 처리
-    let referrerHost = '(direct)';
-    if (referrer !== '(direct)') {
-        try {
-            referrerHost = new URL(referrer).hostname;
-        } catch {
-            referrerHost = '(invalid-referrer)';
-        }
-    }
-
     // Check for UTM parameters
     const utmSource = urlParams.get('utm_source') || '(direct)';
     const utmMedium = urlParams.get('utm_medium');
@@ -20,32 +10,6 @@ function categorizeTrafficChannel() {
     // Priority: UTM parameters
     if (utmMedium) {
         const medium = utmMedium.toLowerCase();
-        const paidSocial = [
-            'fb',
-            'facebook',
-            'remember',
-            'blind',
-            'instagram',
-            'an',
-            'ig',
-        ];
-
-
-        // Display + Social 플랫폼 조합
-        if (['display'].includes(medium) && referrer !== '(direct)') {
-            const isSocialReferrer = paidSocial.some(platform => referrerHost.includes(platform));
-            const isSocialUtm = paidSocial.some(platform => utmSource.includes(platform));
-            
-            if (isSocialReferrer || isSocialUtm) {
-                return {
-                    channel: 'Paid Social',
-                    source: isSocialUtm ? utmSource : referrerHost,
-                    medium: medium,
-                    campaign: utmCampaign,
-                };
-            }
-        }
-
         // Paid Social 처리
         if (['paid_social'].includes(medium)) {
             return {
@@ -74,7 +38,7 @@ function categorizeTrafficChannel() {
             };
         }
 
-        if (['email', 'newsletter'].includes(medium)) {
+        if (['email', 'newsletter', 'mail'].includes(medium)) {
             return {
                 channel: 'Email',
                 source: utmSource,
@@ -82,9 +46,17 @@ function categorizeTrafficChannel() {
                 campaign: utmCampaign,
             };
         }
-        if (['social', 'social-media'].includes(medium)) {
+        if (['social', 'organic_social', 'message'].includes(medium)) {
             return {
                 channel: 'Organic Social',
+                source: utmSource,
+                medium: medium,
+                campaign: utmCampaign,
+            };
+        }
+        if(['organic_video', 'video'].includes(medium)) {
+            return {
+                channel: 'Organic Video',
                 source: utmSource,
                 medium: medium,
                 campaign: utmCampaign,
@@ -100,6 +72,13 @@ function categorizeTrafficChannel() {
 
     // Secondary: Referrer-based logic
     if (referrer !== '(direct)') {
+        let referrerHost;
+        try {
+            referrerHost = new URL(referrer).hostname;
+        } catch {
+            referrerHost = '(invalid-referrer)';
+        }
+
         // Paid Search (known search engines)
         const paidSearchParams = [
             'gclid', // Google Ads
